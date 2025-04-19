@@ -3,49 +3,35 @@ CREATE DATABASE IF NOT EXISTS mercor;
 USE mercor;
 
 DROP TABLE if exists job;
-CREATE TABLE IF NOT EXISTS job(
-	id INT NOT NULL AUTO_INCREMENT,
-    version int not null,
-    jobId VARCHAR(30),
-    status enum('active', 'inactive', 'extended'),
-    rate float,
+CREATE TABLE IF NOT EXISTS job (
+    id INT NOT NULL AUTO_INCREMENT,
+    version INT NOT NULL,
+    jobId VARCHAR(30) NOT NULL,
+    status ENUM('active', 'inactive', 'extended') NOT NULL,
+    rate FLOAT DEFAULT 0,
     title VARCHAR(50),
-    companyId int not null,
-    contractorId int not null,
+    companyId INT NOT NULL,
+    contractorId INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id)
 );
 
--- INSERT INTO job 
--- (jobId,version,status,rate,title,companyId,contractorId)
--- VALUES
--- (1,1,"extended",20,"Software Engineer",1,1),
--- (1,2,"active",20,"Software Engineer",1,1),
--- (1,3,"active",15.5,"Software Engineer",1,1);
 
 drop table if exists timeLog;
-create table if not exists timeLog(
-	id int not null AUTO_INCREMENT primary key,
-    timeLogId int not null,
-    duration int not null,
-    timeStart TIMESTAMP not null,
-    timeEnd TIMESTAMP not null,
-    type enum ('captured', 'adjusted') default 'captured' not null,
-    version int not null,
-    jobUid int not null
+CREATE TABLE IF NOT EXISTS timeLog (
+    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    timeLogId INT NOT NULL,
+    duration INT NOT NULL,
+    timeStart TIMESTAMP NOT NULL,
+    timeEnd TIMESTAMP NOT NULL,
+    type ENUM('captured', 'adjusted') DEFAULT 'captured' NOT NULL,
+    version INT NOT NULL,
+    jobUid INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- insert into timeLog (timeLogId, duration, timeStart, timeEnd, type, version, jobUid)
--- values
--- (1,23,12564,125465,'captured', 1, 1),
--- (1,21,12564,125465,'adjusted', 2, 1),
--- (2,25,12564,125465,'captured', 1, 2),
--- (2,24,12564,125465,'adjusted', 2, 2),
--- (3,25,12564,125465,'captured', 1, 1),
--- (3,24,12564,125465,'adjusted', 2, 1),
--- (4,34,12564,125465,'captured', 1, 1),
--- (4,21,12564,125465,'adjusted', 2, 1),
--- (4,11,12564,125465,'adjusted', 3, 1)
--- ;
 
 DROP TABLE IF EXISTS paymentLineItems;
 
@@ -57,7 +43,11 @@ CREATE TABLE paymentLineItems (
     amount DOUBLE NOT NULL,
     status ENUM('paid', 'not-paid') NOT NULL,
     version INT NOT NULL,
-
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
     INDEX idx_payment_line_item (paymentLineItemId, jobUid, timeLogUid),
     INDEX idx_status (status)
 );
+
