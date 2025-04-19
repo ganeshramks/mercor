@@ -1,0 +1,4 @@
+ignore main-lambda/main
+ignore sftp-config.json
+ignore *.csv
+ignore mercor.csv
