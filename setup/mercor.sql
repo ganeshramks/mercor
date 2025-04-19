@@ -46,3 +46,18 @@ create table if not exists timeLog(
 -- (4,21,12564,125465,'adjusted', 2, 1),
 -- (4,11,12564,125465,'adjusted', 3, 1)
 -- ;
+
+DROP TABLE IF EXISTS paymentLineItems;
+
+CREATE TABLE paymentLineItems (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    paymentLineItemId INT NOT NULL,
+    jobUid INT NOT NULL,
+    timeLogUid INT NOT NULL,
+    amount DOUBLE NOT NULL,
+    status ENUM('paid', 'not-paid') NOT NULL,
+    version INT NOT NULL,
+
+    INDEX idx_payment_line_item (paymentLineItemId, jobUid, timeLogUid),
+    INDEX idx_status (status)
+);

@@ -115,6 +115,35 @@ func UpdateWithTraceORM(newObj, currentObj interface{}, o orm.Ormer, recordExist
 				}
 				break;
 			}
+		case "model.PaymentLineItem", "*model.PaymentLineItem", "PaymentLineItem":
+			var newObjData PaymentLineItem
+
+
+			//convert map into custom struct (Job)
+			mapstructure.Decode(newObjDataMap, &newObjData)
+
+			// if no existing record found then insert the new object with Version as 1
+			if !recordExists {
+				newObjData.Version = 1
+			}
+			fmt.Println("newObjData.Version = ", newObjData.Version)
+			// increment version by 1 to track the change in the existing record
+			fmt.Println("vale of updateRequired = ", updateRequired)
+			if updateRequired {
+				var currentObjData Job
+				mapstructure.Decode(currentObjDataMap, &currentObjData)
+				newObjData.Version = currentObjData.Version + 1
+				fmt.Println("newObjData.Version = ", newObjData.Version)
+			}
+
+			if !recordExists || updateRequired {
+				fmt.Println("newObjData before insertion = ", newObjData)
+				_, err = AddPaymentLineItemOrm(&newObjData, o)
+				if err != nil {
+					fmt.Println("UpdateWithTraceORM.AddPaymentLineItemOrm: Err in insert: ", err)
+				}
+				break;
+			}
 		default:
 				err = errors.New("Unsupported model type")
 	}
