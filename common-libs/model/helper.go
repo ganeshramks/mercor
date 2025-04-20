@@ -123,10 +123,19 @@ func getVersion(obj interface{}) int {
 	return 0
 }
 
-func checkAndUpdateRecordGeneric(newObj interface{}, checkColumns []string, lookupFunc func() (interface{}, error)) error {
-	recordExists := true
 
-	currentRecord, err := lookupFunc()
+// T is any struct that can be passed to UpdateWithTrace.
+func CheckAndUpdateRecordGeneric[T any]( newObj T,
+	checkColumns []string,
+	lookupFunc func() (*T, error),
+	updateFunc func(newData T, oldData *T, recordExists bool, checkColumns []string) error,
+) error {
+	var (
+		recordExists bool = true
+		currentObj   *T
+	)
+
+	currentObj, err := lookupFunc()
 	if err != nil && err != orm.ErrNoRows {
 		fmt.Println("lookupFunc error:", err)
 		return err
@@ -136,10 +145,10 @@ func checkAndUpdateRecordGeneric(newObj interface{}, checkColumns []string, look
 		recordExists = false
 	}
 
-	err = UpdateWithTrace(newObj, currentRecord, recordExists, checkColumns)
-	if err != nil {
-		fmt.Println("UpdateWithTrace error:", err)
+	if err := updateFunc(newObj, currentObj, recordExists, checkColumns); err != nil {
+		fmt.Println("Update error:", err)
+		return err
 	}
 
-	return err
+	return nil
 }

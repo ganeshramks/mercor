@@ -83,12 +83,15 @@ func GetLatestTimeLogs(contractorId int, startTime, endTime time.Time) ([]TimeLo
 }
 
 
-func CheckAndUpdateTimeLogRecord(newTimeLog TimeLog, checkColumns []string) error {
-	return checkAndUpdateRecordGeneric(
+func CheckAndUpdateTimeLog(newTimeLog TimeLog, checkColumns []string) error {
+	return CheckAndUpdateRecordGeneric[TimeLog](
 		newTimeLog,
 		checkColumns,
-		func() (interface{}, error) {
+		func() (*TimeLog, error) {
 			return GetTimeLogByTimeLogIdAndJobUid(newTimeLog.TimeLogId, newTimeLog.Jobuid)
+		},
+		func(newData TimeLog, oldData *TimeLog, recordExists bool, columns []string) error {
+			return UpdateWithTrace(newData, oldData, recordExists, columns)
 		},
 	)
 }

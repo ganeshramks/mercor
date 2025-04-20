@@ -74,12 +74,15 @@ func GetLatestJobsByFieldAndStatus(field string, fieldValue int, status string) 
     return jobs, err
 }
 
-func CheckAndUpdateRecord(newJob Job, checkColumns []string) error {
-	return checkAndUpdateRecordGeneric(
+func CheckAndUpdateJob(newJob Job, checkColumns []string) error {
+	return CheckAndUpdateRecordGeneric[Job](
 		newJob,
 		checkColumns,
-		func() (interface{}, error) {
+		func() (*Job, error) {
 			return GetJobByJobId(newJob.JobId)
+		},
+		func(newData Job, oldData *Job, recordExists bool, columns []string) error {
+			return UpdateWithTrace(newData, oldData, recordExists, columns)
 		},
 	)
 }

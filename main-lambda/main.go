@@ -37,9 +37,9 @@ func main() {
 		ContractorId:101909,
 	}
 
-	err := model.CheckAndUpdateRecord(newJob, []string{"status", "rate"})
+	err := model.CheckAndUpdateJob(newJob, []string{"status", "rate"})
 	if err != nil {
-		fmt.Println("err in CheckAndUpdateRecord: ", err) 
+		fmt.Println("err in CheckAndUpdateJob: ", err) 
 	}
 
 	job, err := model.GetJobByJobId(newJob.JobId)
@@ -58,7 +58,7 @@ func main() {
 	
 	fmt.Println("Time Log starts--------===========================")
 
-	start := time.Date(2023, 4, 1, 0, 0, 0, 0, time.UTC)
+	start := time.Date(2023, 3, 1, 0, 0, 0, 0, time.UTC)
 	end := time.Date(2024, 5, 20, 23, 59, 59, 0, time.UTC)
 
 	newTimeLog := model.TimeLog {
@@ -72,9 +72,9 @@ func main() {
 	}
 
 
-	err = model.CheckAndUpdateTimeLogRecord(newTimeLog, []string{"type", "duration"})
+	err = model.CheckAndUpdateTimeLog(newTimeLog, []string{"type", "duration"})
 	if err != nil {
-		fmt.Println("err in CheckAndUpdateTimeLogRecord: ", err) 
+		fmt.Println("err in CheckAndUpdateTimeLog: ", err) 
 	}
 	timeLog, err := model.GetTimeLogByTimeLogIdAndJobUid(newTimeLog.TimeLogId, job.Id)
 	if err != nil && err != orm.ErrNoRows {
@@ -97,9 +97,9 @@ func main() {
 	    Version:           2,
 	}
 
-	err = model.CheckAndUpdatePaymentLineItemRecord(newPaymentLineItem, []string{"amount", "status"})
+	err = model.CheckAndUpdatePaymentLineItem(newPaymentLineItem, []string{"amount", "status"})
 	if err != nil {
-		fmt.Println("err in CheckAndUpdatePaymentLineItemRecord: ", err) 
+		fmt.Println("err in CheckAndUpdatePaymentLineItem: ", err) 
 	}
 
 	startFilter := time.Date(2020, 4, 1, 0, 0, 0, 0, time.UTC)

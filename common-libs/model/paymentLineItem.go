@@ -81,16 +81,19 @@ func GetLatestPaymentLineItemsRaw(contractorId int, startTime, endTime time.Time
     return items, err
 }
 
-func CheckAndUpdatePaymentLineItemRecord(newPaymentLineItem PaymentLineItem, checkColumns []string) error {
-	return checkAndUpdateRecordGeneric(
-		newPaymentLineItem,
+func CheckAndUpdatePaymentLineItem(newItem PaymentLineItem, checkColumns []string) error {
+	return CheckAndUpdateRecordGeneric[PaymentLineItem](
+		newItem,
 		checkColumns,
-		func() (interface{}, error) {
+		func() (*PaymentLineItem, error) {
 			return GetPaymentLineItemByPaymentLineIdAndJobUidAndTimeLogId(
-				newPaymentLineItem.PaymentLineItemId,
-				newPaymentLineItem.TimeLogUid,
-				newPaymentLineItem.JobUid,
+				newItem.PaymentLineItemId,
+				newItem.TimeLogUid,
+				newItem.JobUid,
 			)
+		},
+		func(newData PaymentLineItem, oldData *PaymentLineItem, recordExists bool, columns []string) error {
+			return UpdateWithTrace(newData, oldData, recordExists, columns)
 		},
 	)
 }
