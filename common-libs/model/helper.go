@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"github.com/spf13/cast"
 	"errors"
+	"strings"
 
 
 	"github.com/fatih/structs"
@@ -21,133 +22,104 @@ func UpdateWithTrace(newObj, currentObj interface{}, recordExists bool, checkCol
 	return err
 }
 
-func UpdateWithTraceORM(newObj, currentObj interface{}, o orm.Ormer, recordExists bool, checkColumns []string) (err error) {
+func UpdateWithTraceORM(newObj, currentObj interface{}, o orm.Ormer, recordExists bool, checkColumns []string) error {
 	fmt.Println("In UpdateWithTraceORM")
 
 	if newObj == nil {
-		err = errors.New("New Obj cannot be nil")
-		return
+		return errors.New("newObj cannot be nil")
 	}
 
-	currentObjDataMap := make(map[string]interface{})
-	//extract interface value by converting it to map 
+	// Convert new object to map
 	newObjDataMap := structs.Map(newObj)
-	fmt.Println("newObjDataMap after struct.Map = ", newObjDataMap)
-	
+	fmt.Println("newObjDataMap after struct.Map =", newObjDataMap)
+
+	var currentObjDataMap map[string]interface{}
 	updateRequired := false
 
-	// Note
-	// currentObj will be nil if recordExists is false so have the below check to avoid panic and check if newObj differs from currentObj (if it exists)
-	// for the range of columns specified in checkColumns
 	if recordExists {
 		fmt.Println("recordExists")
 		currentObjDataMap = structs.Map(currentObj)
-		fmt.Println("currentObjDataMap=", currentObjDataMap)
-		for _, columnValue := range checkColumns {
-			capitalizedColumnValue := cases.Title(language.English, cases.Compact).String(columnValue)
-			newValue, ok := newObjDataMap[capitalizedColumnValue];
-			currentValue, ok2 := currentObjDataMap[capitalizedColumnValue];
-			fmt.Println("newValue=", newValue, "currentValue=", currentValue, newValue==currentValue)
-			if ok && ok2 && newValue != currentValue  {
-				fmt.Println("update is Required")
+		fmt.Println("currentObjDataMap =", currentObjDataMap)
+
+		for _, column := range checkColumns {
+			field := cases.Title(language.English, cases.Compact).String(column)
+			newVal, newOk := newObjDataMap[field]
+			oldVal, oldOk := currentObjDataMap[field]
+
+			fmt.Printf("Comparing %s: new=%v, old=%v\n", field, newVal, oldVal)
+
+			if newOk && oldOk && newVal != oldVal {
 				updateRequired = true
 				break
 			}
 		}
 	}
 
-	switch cast.ToString(reflect.TypeOf(newObj)) {
-		case "model.Job", "*model.Job", "Job":
-			var newObjData Job
+	typeName := cast.ToString(reflect.TypeOf(newObj))
 
-
-			//convert map into custom struct (Job)
-			mapstructure.Decode(newObjDataMap, &newObjData)
-
-			// if no existing record found then insert the new object with Version as 1
-			if !recordExists {
-				newObjData.Version = 1
-			}
-			fmt.Println("newObjData.Version = ", newObjData.Version)
-			// increment version by 1 to track the change in the existing record
-			fmt.Println("vale of updateRequired = ", updateRequired)
-			if updateRequired {
-				var currentObjData Job
-				mapstructure.Decode(currentObjDataMap, &currentObjData)
-				newObjData.Version = currentObjData.Version + 1
-				fmt.Println("newObjData.Version = ", newObjData.Version)
-			}
-
-			if !recordExists || updateRequired {
-				fmt.Println("newObjData before insertion = ", newObjData)
-				_, err = AddJobOrm(&newObjData, o)
-				if err != nil {
-					fmt.Println("UpdateWithTraceORM.AddJobOrm: Err in insert: ", err)
-				}
-				break;
-			}
-		case "model.TimeLog", "*model.TimeLog", "TimeLog":
-			var newObjData TimeLog
-
-
-			//convert map into custom struct (Job)
-			mapstructure.Decode(newObjDataMap, &newObjData)
-
-			// if no existing record found then insert the new object with Version as 1
-			if !recordExists {
-				newObjData.Version = 1
-			}
-			fmt.Println("newObjData.Version = ", newObjData.Version)
-			// increment version by 1 to track the change in the existing record
-			fmt.Println("vale of updateRequired = ", updateRequired)
-			if updateRequired {
-				var currentObjData Job
-				mapstructure.Decode(currentObjDataMap, &currentObjData)
-				newObjData.Version = currentObjData.Version + 1
-				fmt.Println("newObjData.Version = ", newObjData.Version)
-			}
-
-			if !recordExists || updateRequired {
-				fmt.Println("newObjData before insertion = ", newObjData)
-				_, err = AddTimeLogOrm(&newObjData, o)
-				if err != nil {
-					fmt.Println("UpdateWithTraceORM.AddTimeLogOrm: Err in insert: ", err)
-				}
-				break;
-			}
-		case "model.PaymentLineItem", "*model.PaymentLineItem", "PaymentLineItem":
-			var newObjData PaymentLineItem
-
-
-			//convert map into custom struct (Job)
-			mapstructure.Decode(newObjDataMap, &newObjData)
-
-			// if no existing record found then insert the new object with Version as 1
-			if !recordExists {
-				newObjData.Version = 1
-			}
-			fmt.Println("newObjData.Version = ", newObjData.Version)
-			// increment version by 1 to track the change in the existing record
-			fmt.Println("vale of updateRequired = ", updateRequired)
-			if updateRequired {
-				var currentObjData Job
-				mapstructure.Decode(currentObjDataMap, &currentObjData)
-				newObjData.Version = currentObjData.Version + 1
-				fmt.Println("newObjData.Version = ", newObjData.Version)
-			}
-
-			if !recordExists || updateRequired {
-				fmt.Println("newObjData before insertion = ", newObjData)
-				_, err = AddPaymentLineItemOrm(&newObjData, o)
-				if err != nil {
-					fmt.Println("UpdateWithTraceORM.AddPaymentLineItemOrm: Err in insert: ", err)
-				}
-				break;
-			}
-		default:
-				err = errors.New("Unsupported model type")
+	// Normalize type name
+	if strings.HasPrefix(typeName, "*") {
+		typeName = typeName[1:]
 	}
 
-	return
-
+	switch typeName {
+	case "model.Job", "Job":
+		return handleVersionedInsert[Job](newObjDataMap, currentObjDataMap, recordExists, updateRequired, o, AddJobOrm)
+	case "model.TimeLog", "TimeLog":
+		return handleVersionedInsert[TimeLog](newObjDataMap, currentObjDataMap, recordExists, updateRequired, o, AddTimeLogOrm)
+	case "model.PaymentLineItem", "PaymentLineItem":
+		return handleVersionedInsert[PaymentLineItem](newObjDataMap, currentObjDataMap, recordExists, updateRequired, o, AddPaymentLineItemOrm)
+	default:
+		return errors.New("unsupported model type")
+	}
 }
+
+func handleVersionedInsert[T any](
+	newMap map[string]interface{},
+	currentMap map[string]interface{},
+	recordExists bool,
+	updateRequired bool,
+	o orm.Ormer,
+	insertFunc func(*T, orm.Ormer) (int64, error),
+) error {
+	var newData T
+	if err := mapstructure.Decode(newMap, &newData); err != nil {
+		return fmt.Errorf("error decoding new struct: %w", err)
+	}
+
+	if !recordExists {
+		setVersion(&newData, 1)
+	} else if updateRequired {
+		var currentData T
+		if err := mapstructure.Decode(currentMap, &currentData); err == nil {
+			setVersion(&newData, getVersion(currentData)+1)
+		}
+	}
+
+	if !recordExists || updateRequired {
+		fmt.Printf("Inserting new version: %+v\n", newData)
+		_, err := insertFunc(&newData, o)
+		return err
+	}
+
+	return nil
+}
+
+func setVersion(obj interface{}, version int) {
+	v := reflect.ValueOf(obj).Elem()
+	if field := v.FieldByName("Version"); field.IsValid() && field.CanSet() {
+		field.SetInt(int64(version))
+	}
+}
+
+func getVersion(obj interface{}) int {
+	v := reflect.ValueOf(obj)
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+	if field := v.FieldByName("Version"); field.IsValid() {
+		return int(field.Int())
+	}
+	return 0
+}
+
