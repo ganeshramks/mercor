@@ -1,61 +1,62 @@
 package utility
 
 import (
+	"errors"
 	"fmt"
 	"github.com/beego/beego/v2/client/orm"
 	_ "github.com/go-sql-driver/mysql"
 )
 
-func CPrint(){
+// CPrint is a sample utility print function.
+func CPrint() {
 	fmt.Println("Hello from utility")
 }
 
-func ConnectToDatabase(dbName string) (err error) {
-	fmt.Println("In connectToDatabase")
+// ConnectToDatabase registers and tests a connection to the specified database.
+func ConnectToDatabase(dbName string) error {
+	fmt.Println("Connecting to database:", dbName)
 
-	// orm.RegisterModel(new(User))
-	dbCreds := fetchDBCreds(dbName)
-	dsn:= dbCreds["userName"]+":"+dbCreds["pwd"]+"@/"+dbName+"?charset=utf8"
+	creds, err := fetchDBCreds(dbName)
+	if err != nil {
+		return fmt.Errorf("failed to fetch DB credentials: %w", err)
+	}
 
-	_, err = orm.GetDB(dbName)
-	if err != nil {
-		err = orm.RegisterDataBase("default", "mysql", dsn)
+	dsn := fmt.Sprintf("%s:%s@/%s?charset=utf8", creds["userName"], creds["pwd"], dbName)
+
+	if _, err := orm.GetDB(dbName); err != nil {
+		if regErr := orm.RegisterDataBase("default", "mysql", dsn); regErr != nil {
+			return fmt.Errorf("failed to register DB: %w", regErr)
+		}
 	}
-	fmt.Println("error:", err)
-	err = testDBConn()
-	if err != nil {
-		fmt.Println("connection to "+dbName+" db failed with error:",err)
-		return
+
+	if err := testDBConn(); err != nil {
+		return fmt.Errorf("DB connection test failed: %w", err)
 	}
-	fmt.Println("connection to "+dbName+" db success")
-	return
+
+	fmt.Println("Successfully connected to database:", dbName)
+	return nil
 }
 
+// testDBConn pings the database with a simple query.
 func testDBConn() error {
 	o := orm.NewOrm()
-	// o.Using(dbName)
 	_, err := o.Raw("SELECT 1").Exec()
 	return err
 }
 
-func fetchDBCreds(dbName string) (map[string]string){
-	fmt.Println("Inside fetchDBCreds")
-	
-	// Have a map storing userName and passwords in a place like AWS secrets or lambda env variables
-
-	dbSecrets := make(map[string]map[string]string)
-
-	mercorDBCredsMap := map[string]string{
-		"userName": "mercor",
-		"pwd":      "mercor123",
+// fetchDBCreds retrieves database credentials.
+func fetchDBCreds(dbName string) (map[string]string, error) {
+	// NOTE: In production, I will use environment variables or secret manager (eg: AWS Secrets Manager).
+	dbSecrets := map[string]map[string]string{
+		"mercor": {
+			"userName": "mercor",
+			"pwd":      "mercor123",
+		},
 	}
 
-	dbSecrets["mercor"] = mercorDBCredsMap
-
-	val, ok := dbSecrets[dbName]
-	if ok {
-	    return val
+	if creds, ok := dbSecrets[dbName]; ok {
+		return creds, nil
 	}
 
-	return nil
+	return nil, errors.New("database credentials not found")
 }

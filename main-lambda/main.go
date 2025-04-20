@@ -2,109 +2,111 @@ package main
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/beego/beego/v2/client/orm"
 	_ "github.com/go-sql-driver/mysql"
-	"time"
 	"github.com/spf13/cast"
 
-
-	"common-libs/utility"
 	"common-libs/model"
+	"common-libs/utility"
 )
 
 func init() {
-	fmt.Println("init")
+	fmt.Println("Initializing database connection...")
+	if err := utility.ConnectToDatabase("mercor"); err != nil {
+		fmt.Printf("Database connection failed: %v\n", err)
+	}
+}
 
-	dbName:="mercor"
-	err := utility.ConnectToDatabase(dbName)
-	if err != nil {
-		fmt.Println("ConnectToDatabase failed with err:", err)
+func main() {
+	job := createOrUpdateJob()
+	if job == nil {
 		return
 	}
 
+	timeLog := createOrUpdateTimeLog(job.Id, job.ContractorId)
+	if timeLog == nil {
+		return
+	}
+
+	createOrUpdatePaymentLineItem(job.Id, timeLog.Id, job.ContractorId)
 }
 
-
-func main() {
-
-	newJob := model.Job {
-		Version:1,
-		JobId:9,
-		Rate:0.29,
-		Status:"active",
-		Title:"Director Investment Associate",
-		CompanyId:4,
-		ContractorId:101909,
+func createOrUpdateJob() *model.Job {
+	job := model.Job{
+		Version:      1,
+		JobId:        9,
+		Rate:         0.29,
+		Status:       "active",
+		Title:        "Director Investment Associate",
+		CompanyId:    4,
+		ContractorId: 101909,
 	}
 
-	err := model.CheckAndUpdateJob(newJob, []string{"status", "rate"})
-	if err != nil {
-		fmt.Println("err in CheckAndUpdateJob: ", err) 
+	if err := model.CheckAndUpdateJob(job, []string{"status", "rate"}); err != nil {
+		fmt.Printf("Failed to update job: %v\n", err)
+		return nil
 	}
 
-	job, err := model.GetJobByJobId(newJob.JobId)
+	existingJob, err := model.GetJobByJobId(job.JobId)
 	if err != nil && err != orm.ErrNoRows {
-		fmt.Println("err in GetJobById: ", err)
+		fmt.Printf("Error retrieving job: %v\n", err)
+		return nil
 	}
-	fmt.Println("New job: ", job, "________________________________")
 
-	// Get all Jobs for a company with latest versions as active/inactive etc
-	fmt.Println(model.GetLatestJobsByFieldAndStatus("companyId",job.CompanyId, "active"))
+	fmt.Println("Retrieved job:", existingJob)
+	fmt.Println(model.GetLatestJobsByFieldAndStatus("companyId", existingJob.CompanyId, "active"))
+	fmt.Println(model.GetLatestJobsByFieldAndStatus("contractorId", existingJob.ContractorId, "active"))
+	return existingJob
+}
 
-	// Get all Jobs for a contractor with latest versions as active/inactive etc
-	fmt.Println(model.GetLatestJobsByFieldAndStatus("contractorId", job.ContractorId, "active"))
-
-
-	
-	fmt.Println("Time Log starts--------===========================")
-
+func createOrUpdateTimeLog(jobId, contractorId int) *model.TimeLog {
 	start := time.Date(2023, 3, 1, 0, 0, 0, 0, time.UTC)
 	end := time.Date(2024, 5, 20, 23, 59, 59, 0, time.UTC)
 
-	newTimeLog := model.TimeLog {
-		Version: 1,
-		TimeLogId: 23,
-		Duration: cast.ToInt(end.Sub(start).Minutes()), //duration is in minutes
-		TimeStart: start,
-		TimeEnd: end,
-		Type: "adjusted",
-		Jobuid: job.Id,
+	timeLog := model.TimeLog{
+		Version:    1,
+		TimeLogId:  23,
+		Duration:   cast.ToInt(end.Sub(start).Minutes()),
+		TimeStart:  start,
+		TimeEnd:    end,
+		Type:       "adjusted",
+		Jobuid:     jobId,
 	}
 
-
-	err = model.CheckAndUpdateTimeLog(newTimeLog, []string{"type", "duration"})
-	if err != nil {
-		fmt.Println("err in CheckAndUpdateTimeLog: ", err) 
+	if err := model.CheckAndUpdateTimeLog(timeLog, []string{"type", "duration"}); err != nil {
+		fmt.Printf("Failed to update time log: %v\n", err)
+		return nil
 	}
-	timeLog, err := model.GetTimeLogByTimeLogIdAndJobUid(newTimeLog.TimeLogId, job.Id)
+
+	existingLog, err := model.GetTimeLogByTimeLogIdAndJobUid(timeLog.TimeLogId, jobId)
 	if err != nil && err != orm.ErrNoRows {
-		fmt.Println("err in GetTimeLogByTimeLogIdAndJobUid: ", err)
-	}
-	fmt.Println("New timeLog: ", timeLog, "________________________________")
-
-	fmt.Println(model.GetLatestTimeLogs(newJob.ContractorId, start, end))
-
-
-	fmt.Println("Payment Line Item starts--------===========================")
-
-
-	newPaymentLineItem := model.PaymentLineItem{
-	    PaymentLineItemId: 101,
-	    JobUid:            job.Id,
-	    TimeLogUid:        timeLog.Id,
-	    Amount:            708,
-	    Status:            "paid", // or "not-paid"
-	    Version:           2,
+		fmt.Printf("Error retrieving time log: %v\n", err)
+		return nil
 	}
 
-	err = model.CheckAndUpdatePaymentLineItem(newPaymentLineItem, []string{"amount", "status"})
-	if err != nil {
-		fmt.Println("err in CheckAndUpdatePaymentLineItem: ", err) 
+	fmt.Println("Retrieved time log:", existingLog)
+	fmt.Println(model.GetLatestTimeLogs(contractorId, start, end))
+	return existingLog
+}
+
+func createOrUpdatePaymentLineItem(jobId, timeLogId, contractorId int) {
+	item := model.PaymentLineItem{
+		PaymentLineItemId: 101,
+		JobUid:            jobId,
+		TimeLogUid:        timeLogId,
+		Amount:            708,
+		Status:            "paid",
+		Version:           2,
 	}
 
-	startFilter := time.Date(2020, 4, 1, 0, 0, 0, 0, time.UTC)
-	endFilter := time.Date(2026, 5, 20, 23, 59, 59, 0, time.UTC)
-	// Get all paymennt line items for a contractor with latest versions etc
-	fmt.Println(model.GetLatestPaymentLineItemsRaw(job.ContractorId, startFilter, endFilter))
+	if err := model.CheckAndUpdatePaymentLineItem(item, []string{"amount", "status"}); err != nil {
+		fmt.Printf("Failed to update payment line item: %v\n", err)
+		return
+	}
 
+	start := time.Date(2020, 4, 1, 0, 0, 0, 0, time.UTC)
+	end := time.Date(2026, 5, 20, 23, 59, 59, 0, time.UTC)
+	fmt.Println(model.GetLatestPaymentLineItemsRaw(contractorId, start, end))
 }
