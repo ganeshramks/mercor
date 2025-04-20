@@ -123,3 +123,23 @@ func getVersion(obj interface{}) int {
 	return 0
 }
 
+func checkAndUpdateRecordGeneric(newObj interface{}, checkColumns []string, lookupFunc func() (interface{}, error)) error {
+	recordExists := true
+
+	currentRecord, err := lookupFunc()
+	if err != nil && err != orm.ErrNoRows {
+		fmt.Println("lookupFunc error:", err)
+		return err
+	}
+
+	if err == orm.ErrNoRows {
+		recordExists = false
+	}
+
+	err = UpdateWithTrace(newObj, currentRecord, recordExists, checkColumns)
+	if err != nil {
+		fmt.Println("UpdateWithTrace error:", err)
+	}
+
+	return err
+}

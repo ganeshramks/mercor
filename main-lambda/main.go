@@ -97,9 +97,9 @@ func main() {
 	    Version:           2,
 	}
 
-	err = model.CheckAndUpdatepaymentLineItemRecord(newPaymentLineItem, []string{"amount", "status"})
+	err = model.CheckAndUpdatePaymentLineItemRecord(newPaymentLineItem, []string{"amount", "status"})
 	if err != nil {
-		fmt.Println("err in CheckAndUpdatepaymentLineItemRecord: ", err) 
+		fmt.Println("err in CheckAndUpdatePaymentLineItemRecord: ", err) 
 	}
 
 	startFilter := time.Date(2020, 4, 1, 0, 0, 0, 0, time.UTC)

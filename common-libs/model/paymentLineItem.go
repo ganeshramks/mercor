@@ -81,22 +81,16 @@ func GetLatestPaymentLineItemsRaw(contractorId int, startTime, endTime time.Time
     return items, err
 }
 
-func CheckAndUpdatepaymentLineItemRecord(newPaymentLineItem PaymentLineItem, checkColumns []string) (err error) {
-	// check and get if any record exists with the time log id received in newTimeLog object input
-	recordExists := true
-	currentRecord, err := GetPaymentLineItemByPaymentLineIdAndJobUidAndTimeLogId(newPaymentLineItem.PaymentLineItemId, newPaymentLineItem.TimeLogUid, newPaymentLineItem.JobUid)
-	if err != nil && err != orm.ErrNoRows {
-		fmt.Println("Err in GetPaymentLineItemByPaymentLineIdAndJobUidAndTimeLogId: ", err)
-		return 
-	}
-	if err == orm.ErrNoRows {
-		recordExists = false 
-	}
-
-	err = UpdateWithTrace(newPaymentLineItem, currentRecord, recordExists, checkColumns)
-	if err != nil {
-		fmt.Println("UpdateWithTrace err: ", err) 
-	}
-
-	return
+func CheckAndUpdatePaymentLineItemRecord(newPaymentLineItem PaymentLineItem, checkColumns []string) error {
+	return checkAndUpdateRecordGeneric(
+		newPaymentLineItem,
+		checkColumns,
+		func() (interface{}, error) {
+			return GetPaymentLineItemByPaymentLineIdAndJobUidAndTimeLogId(
+				newPaymentLineItem.PaymentLineItemId,
+				newPaymentLineItem.TimeLogUid,
+				newPaymentLineItem.JobUid,
+			)
+		},
+	)
 }

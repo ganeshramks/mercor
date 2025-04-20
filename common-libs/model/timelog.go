@@ -83,22 +83,12 @@ func GetLatestTimeLogs(contractorId int, startTime, endTime time.Time) ([]TimeLo
 }
 
 
-func CheckAndUpdateTimeLogRecord(newTimeLog TimeLog, checkColumns []string) (err error) {
-	// check and get if any record exists with the time log id received in newTimeLog object input
-	recordExists := true
-	currentRecord, err := GetTimeLogByTimeLogIdAndJobUid(newTimeLog.TimeLogId, newTimeLog.Jobuid)
-	if err != nil && err != orm.ErrNoRows {
-		fmt.Println("Err in GetTimeLogByTimeLogIdAndJobUid: ", err)
-		return 
-	}
-	if err == orm.ErrNoRows {
-		recordExists = false 
-	}
-
-	err = UpdateWithTrace(newTimeLog, currentRecord, recordExists, checkColumns)
-	if err != nil {
-		fmt.Println("UpdateWithTrace err: ", err) 
-	}
-
-	return
+func CheckAndUpdateTimeLogRecord(newTimeLog TimeLog, checkColumns []string) error {
+	return checkAndUpdateRecordGeneric(
+		newTimeLog,
+		checkColumns,
+		func() (interface{}, error) {
+			return GetTimeLogByTimeLogIdAndJobUid(newTimeLog.TimeLogId, newTimeLog.Jobuid)
+		},
+	)
 }

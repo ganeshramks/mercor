@@ -74,22 +74,12 @@ func GetLatestJobsByFieldAndStatus(field string, fieldValue int, status string) 
     return jobs, err
 }
 
-func CheckAndUpdateRecord(newJob Job, checkColumns []string) (err error) {
-	// check and get if any record exists with the jobId received in newJob object input
-	recordExists := true
-	currentRecord, err := GetJobByJobId(newJob.JobId)
-	if err != nil && err != orm.ErrNoRows {
-		fmt.Println("Err in GetJobByJobId: ", err)
-		return 
-	}
-	if err == orm.ErrNoRows {
-		recordExists = false 
-	}
-
-	err = UpdateWithTrace(newJob, currentRecord, recordExists, checkColumns)
-	if err != nil {
-		fmt.Println("UpdateWithTrace err: ", err) 
-	}
-
-	return
+func CheckAndUpdateRecord(newJob Job, checkColumns []string) error {
+	return checkAndUpdateRecordGeneric(
+		newJob,
+		checkColumns,
+		func() (interface{}, error) {
+			return GetJobByJobId(newJob.JobId)
+		},
+	)
 }
